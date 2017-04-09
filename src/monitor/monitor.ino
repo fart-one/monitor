@@ -7,34 +7,12 @@
 #include <PubSubClient.h>
 #include <MQTT.h>
 #include <ArduinoJson.h>
+#include "Configuration.h"
 
-/////////////////////
-//Occupation status//
-////////////////////
-#define STATE_UNKNOWN 0
-#define STATE_UNOCCUPIED 10
-#define STATE_OCCUPIED 20
-
-////////////////////////
-//Location definitions//
-////////////////////////
-#define OFFICE "Some office id"
-#define VERSION 1
-const int sleepTime = 1; // in seconds
-
-/////////////////////
-//WiFi and MQTT def//
-/////////////////////
-const char* SSID = "ssid";
-const char* wiFiPassword = "WiFi password";
-const char* mqttServer = "broker";
-const char* mqttUser = "mqttlogin";
-const char* mqttPassword = "mqttpswd";
-#define BUFFER_SIZE 100
-
-//////////////////
-//LED definition//
-/////////////////
+/////////////////////////////////
+//Global variable to toggle LED//
+/////////////////////////////////
+int lastStatus;
 
 //////////////
 //Connection//
@@ -74,8 +52,6 @@ void reconnect_mqtt(String deviceId) {
       Serial.println(topic);
       client.subscribe(MQTT::Subscribe()
                               .add_topic(topic,1));
-      client.publish(MQTT::Publish(topic, "connecting").set_qos(1).set_retain(1));
-      client.loop();
     } else {
       Serial.print("failed, rc=");
       //Serial.print(client.state());
@@ -88,17 +64,22 @@ void reconnect_mqtt(String deviceId) {
 void mqttCallback(const MQTT::Publish& pub) {
   Serial.print(pub.topic());
   Serial.print(" => ");
+  String payload;
   if (pub.has_stream()) {
     uint8_t buf[BUFFER_SIZE];
     int read;
     while (read = pub.payload_stream()->read(buf, BUFFER_SIZE)) {
       Serial.write(buf, read);
+      //TODO :)
+      payload = "";
     }
     pub.payload_stream()->stop();
     Serial.println("");
   } else {
+    payload = pub.payload_string();
     Serial.println(pub.payload_string());
   }
+  processPayload(payload);
 }
 
 void mqttPublish(String message, int intDeviceId) {
@@ -109,10 +90,57 @@ void mqttPublish(String message, int intDeviceId) {
                  );
 }
 
+void processPayload(String payload) {
+  Serial.println("Decoding message... ");
+  JsonObject& root = decodeJson(payload);
+  //root.printTo(Serial);
+  int device = root["deviceId"];
+  int currentStatus = root["status"];
+  Serial.println(device);
+  if (device) {
+    int deviceId = ESP.getChipId();
+
+    Serial.print("Comparing received ID: [");
+    Serial.print(device);
+    Serial.print("] to: [");
+    Serial.print(deviceId);
+    Serial.println("]");
+    if (device == deviceId) {
+      Serial.println("Payload should be processed by this device");
+      //root.printTo(Serial);
+      Serial.print("Got status: ");
+      Serial.print(currentStatus);
+      if (!lastStatus) {
+        lastStatus = currentStatus;
+        toggleLed();
+      }
+      if (lastStatus != currentStatus) {
+        lastStatus = currentStatus;
+        toggleLed();
+      }
+    } else {
+      Serial.println("Payload missmatch");
+    }
+  }
+}
+
+void toggleLed() {
+  if (lastStatus) {
+    if (lastStatus == STATE_OCCUPIED) {
+      digitalWrite(D1, HIGH);
+      digitalWrite(D2, LOW);
+      return;
+    }
+  }
+  digitalWrite(D1, LOW);
+  digitalWrite(D2, HIGH);
+}
+
 void setup() {
   Serial.begin(9600);
   pinMode(BUILTIN_LED, OUTPUT); 
-  
+  pinMode(D1, OUTPUT);
+  pinMode(D2, OUTPUT);
   setup_wifi();
 }
 
@@ -122,8 +150,6 @@ void loop() {
   String deviceId = String(intDeviceId);
 
   StaticJsonBuffer<256> jsonBuffer;
-  
-  Serial.println("--------------------------------");
   
   if (!client.connected()) {
     reconnect_mqtt(deviceId);
@@ -135,7 +161,19 @@ void loop() {
     //mqttPublish(message, intDeviceId);
   }
 
+  client.loop();
+
   delay(sleepTime * 1000);
+}
+
+/**
+ * Decode comunication frame
+ */
+
+JsonObject& decodeJson(String payload) {
+  StaticJsonBuffer<256> jsonBuffer;
+  JsonObject& root = jsonBuffer.parseObject(payload);
+  return root;
 }
 
 /**
