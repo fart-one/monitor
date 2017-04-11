@@ -92,7 +92,8 @@ void mqttPublish(String message, int intDeviceId) {
 
 void processPayload(String payload) {
   Serial.println("Decoding message... ");
-  JsonObject& root = decodeJson(payload);
+  StaticJsonBuffer<256> jsonBuffer;
+  JsonObject& root = jsonBuffer.parseObject(payload);
   //root.printTo(Serial);
   int device = root["deviceId"];
   int currentStatus = root["status"];
@@ -164,16 +165,6 @@ void loop() {
   client.loop();
 
   delay(sleepTime * 1000);
-}
-
-/**
- * Decode comunication frame
- */
-
-JsonObject& decodeJson(String payload) {
-  StaticJsonBuffer<256> jsonBuffer;
-  JsonObject& root = jsonBuffer.parseObject(payload);
-  return root;
 }
 
 /**
