@@ -15,6 +15,20 @@
 int lastStatus;
 
 //////////////
+//RGB PINOUT//
+//////////////
+const int REDPIN = D5;
+const int GREENPIN = D3;
+const int BLUEPIN = D7;
+
+/////////////////////
+//Colors definition//
+/////////////////////
+const int COLOR_YELLOW[3] = {255, 255, 0};
+const int COLOR_RED[3] = {255, 0, 0};
+const int COLOR_GREEN[3] = {0, 255, 0};
+
+//////////////
 //Connection//
 //////////////
 WiFiClient wclient;
@@ -128,20 +142,55 @@ void processPayload(String payload) {
 void toggleLed() {
   if (lastStatus) {
     if (lastStatus == STATE_OCCUPIED) {
-      digitalWrite(D1, HIGH);
-      digitalWrite(D2, LOW);
+      setColor(COLOR_RED);
+      return;
+    }
+    if (lastStatus == STATE_UNOCCUPIED) {
+      setColor(COLOR_GREEN);
       return;
     }
   }
-  digitalWrite(D1, LOW);
-  digitalWrite(D2, HIGH);
+  setColor(COLOR_YELLOW);
+}
+
+void setColor(const int rgb_color[]) {
+  Serial.println();
+  Serial.print("Setting color: ");
+  Serial.print(rgb_color[0]);
+  Serial.print("R, ");
+  Serial.print(rgb_color[1]);
+  Serial.print("G, ");
+  Serial.print(rgb_color[2]);
+  Serial.println("B");
+  //analogWrite(REDPIN, rgb_color[0]);
+  //analogWrite(GREENPIN, rgb_color[1]);
+  //analogWrite(BLUEPIN, rgb_color[2]);
+  if (rgb_color[0] == 255) {
+    digitalWrite(REDPIN, LOW);
+  } else {
+    digitalWrite(REDPIN, HIGH);
+  }
+  if (rgb_color[1] == 255) {
+    digitalWrite(GREENPIN, LOW);
+  } else {
+    digitalWrite(GREENPIN, HIGH);
+  }
+  if (rgb_color[2] == 255) {
+    digitalWrite(BLUEPIN, LOW);
+  } else {
+    digitalWrite(BLUEPIN, HIGH);
+  }
 }
 
 void setup() {
   Serial.begin(9600);
   pinMode(BUILTIN_LED, OUTPUT); 
-  pinMode(D1, OUTPUT);
-  pinMode(D2, OUTPUT);
+  pinMode(REDPIN, OUTPUT);
+  digitalWrite(REDPIN, LOW);
+  pinMode(BLUEPIN, OUTPUT);
+  digitalWrite(BLUEPIN, LOW);
+  pinMode(GREENPIN, OUTPUT);
+  digitalWrite(GREENPIN, LOW);
   setup_wifi();
 }
 
