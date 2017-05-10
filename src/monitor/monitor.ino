@@ -67,9 +67,13 @@ PubSubClient client(wclient, mqttServer);
 Configuration conf(configFile.c_str());
 
 void setup_wifi() {
+  Serial.begin(19200);
 
   //Load config from json
   Serial.println("Reading config file");
+  Serial.print("Got SSID from file:");
+  Serial.print(conf.getWifiSSID());
+  Serial.println();
 
 
  
@@ -223,7 +227,7 @@ void setup() {
 
 void loop() {
   
-  int intDeviceId = ESP.getChipId();
+  /*int intDeviceId = ESP.getChipId();
   String deviceId = String(intDeviceId);
 
   StaticJsonBuffer<256> jsonBuffer;
@@ -240,7 +244,9 @@ void loop() {
 
   client.loop();
 
-  delay(sleepTime * 1000);
+  delay(sleepTime * 1000);*/
+  Serial.println("loop");
+  delay(1000);
 }
 
 
