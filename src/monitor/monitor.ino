@@ -5,14 +5,36 @@
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-#include <MQTT.h>
 #include <ArduinoJson.h>
-#include "Configuration.h"
+#include <Configuration.h>
 
 /////////////////////////////////
 //Global variable to toggle LED//
 /////////////////////////////////
 int lastStatus;
+
+/////////////////////
+//Occupation status//
+////////////////////
+#define STATE_UNKNOWN 0
+#define STATE_UNOCCUPIED 10
+#define STATE_OCCUPIED 20
+
+////////////////////////
+//Location definitions//
+////////////////////////
+#define OFFICE "LegitOfficeLocationId"
+#define VERSION 1
+const int sleepTime = 1; // in seconds
+
+/////////////////////////////
+//Configuration definitions//
+/////////////////////////////
+const String configFile = "/config.json";
+StaticJsonBuffer<256> configJsonBuffer;
+// TLS
+const char* fingerprint = "49 F5 0D 4C F3 3D 5F D4 7E BB D3 81 63 77 0C 30 07 2C FD AF";
+#define MQTT_TLS_PORT 8883
 
 //////////////
 //RGB PINOUT//
@@ -28,24 +50,29 @@ const int COLOR_YELLOW[3] = {255, 255, 0};
 const int COLOR_RED[3] = {255, 0, 0};
 const int COLOR_GREEN[3] = {0, 255, 0};
 
+/*
+   MQTT const variables - they need to be here
+   we read them once in setup() and use them many times in loop()
+*/
+const char *mqttServer;
+const char *mqttUser;
+const char *mqttPassword;
+const char *officeId;
+
 //////////////
 //Connection//
 //////////////
 WiFiClient wclient;
 PubSubClient client(wclient, mqttServer);
+Configuration conf(configFile.c_str());
 
 void setup_wifi() {
 
-  Serial.print("Connecting to: [");
-  Serial.print(SSID);
-  Serial.println("]");
+  //Load config from json
+  Serial.println("Reading config file");
 
-  WiFi.begin(SSID, wiFiPassword);
 
-  while(WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("[?] Waiting for WiFi connection");
-  }
+ 
   Serial.println("");
   Serial.print("[*] WiFi connected [");
   Serial.print(WiFi.localIP());
@@ -61,7 +88,7 @@ void reconnect_mqtt(String deviceId) {
     {
       Serial.println("Connected to MQTT server");
       client.set_callback(mqttCallback);
-      String topic = "toilet/" + String(OFFICE) + "/" + deviceId;
+      String topic = "toilet/" + String(officeId) + "/" + deviceId;
       Serial.print("Subscribing to: ");
       Serial.println(topic);
       client.subscribe(MQTT::Subscribe()
@@ -80,9 +107,9 @@ void mqttCallback(const MQTT::Publish& pub) {
   Serial.print(" => ");
   String payload;
   if (pub.has_stream()) {
-    uint8_t buf[BUFFER_SIZE];
+    uint8_t buf[100];
     int read;
-    while (read = pub.payload_stream()->read(buf, BUFFER_SIZE)) {
+    while (read = pub.payload_stream()->read(buf, 100)) {
       Serial.write(buf, read);
       //TODO :)
       payload = "";
@@ -215,6 +242,7 @@ void loop() {
 
   delay(sleepTime * 1000);
 }
+
 
 /**
  * Creates comunication frame
