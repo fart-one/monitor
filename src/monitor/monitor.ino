@@ -7,6 +7,7 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <Configuration.h>
+#include <FS.h>
 
 /////////////////////////////////
 //Global variable to toggle LED//
@@ -64,12 +65,13 @@ const char *officeId;
 //////////////
 WiFiClient wclient;
 PubSubClient client(wclient, mqttServer);
-Configuration conf(configFile.c_str());
+Configuration conf;
 
 void setup_wifi() {
-  Serial.begin(19200);
 
   //Load config from json
+  
+  Serial.println(conf.getWifiSSID());
   Serial.println("Reading config file");
   Serial.print("Got SSID from file:");
   Serial.print(conf.getWifiSSID());
@@ -215,6 +217,7 @@ void setColor(const int rgb_color[]) {
 
 void setup() {
   Serial.begin(9600);
+  conf = Configuration(configFile.c_str());
   pinMode(BUILTIN_LED, OUTPUT); 
   pinMode(REDPIN, OUTPUT);
   digitalWrite(REDPIN, LOW);
@@ -246,7 +249,7 @@ void loop() {
 
   delay(sleepTime * 1000);*/
   Serial.println("loop");
-  delay(1000);
+  delay(10000);
 }
 
 
